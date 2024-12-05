@@ -1,0 +1,46 @@
+name: Node.js CI/CD
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        node-version: [22.x]
+    steps:
+    # 1. GitHub 저장소 체크아웃
+    - uses: actions/checkout@v4.2.2
+
+    # 2. Node.js 설정
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4.1.0
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    # 3. 패키지 설치 및 테스트 실행
+    - run: npm ci
+    - run: npm test
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    # 1. GitHub 저장소 체크아웃
+    - uses: actions/checkout@v4.2.2
+
+    # 2. SSH로 EC2에 접속하여 배포 스크립트 실행
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v0.1.7
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ec2-user
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd /path/to/your/app
+          git pull origin master
+          npm install
+          pm2 restart all
